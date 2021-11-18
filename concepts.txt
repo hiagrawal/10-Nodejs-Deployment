@@ -1,0 +1,371 @@
+For encrypting password:
+npm install --save bcryptjs
+
+------------------------------------------------------------------------------------------------------------
+
+for CSRF token: this is a package for node express which allows us to generate csrf token 
+npm install --save csurf
+
+1. we will include this pkg in application
+const csrf = require('csurf');
+2. Then we will initialize it like we are doing for express and mongoDb store
+const csrfProtection = csrf();
+3. Then we will add this as a middleware. This should be after sessions middleware has been added as it uses session.
+app.use(csrfProtection);
+4. so now every request that comes through will pass through this csrf middleware. 
+It validates all 'post' requests since post request has the data 
+5. Now we need to add csrf token to request that come to the server so server will check for this csrf token 
+and hence validates that it is a coming from a genuine request and not any fraud request
+
+for this, view (ui) must pass this csrf token, that is view (ui) must have access to this token
+so, when we render the page, we pass this paramter to view (ui) and then view (ui) passes this to server in post request 
+and server validates the same
+
+for this, we have csrfToken() method added by middleware that generates a random hashed csrf token
+which we pass to the view and send back the same in post request
+this should be with the name '_csrf' only as it looks for value of this tag only to validate the same
+
+Now, we need all views to add access to this token. For this we will have to pass this csrf paramter to our view 
+whereever we render the view
+
+to avoid this, we can add a middleware and set all variables that we need access to in all our views in res locals
+res.locals is a feature provided by node expressjs to set all local variables that we need to access in all views
+
+so, before we add our route middleware, we will add this middlware to add locals
+
+---------------------------------------------------------------------------------------------------------------------------------
+Flash:
+
+If we want some data to show in any middleware on basis of other middleware that is we want data to get access between multiple
+requests, then we can use sessions. But storing data in sessions for some error messages and then removing it might be very
+cumbersome and for this we have connect-flash package which uses sessions internally and remove it from session later automatically
+npm install --save connect-flash
+
+1. First we need to include this in our application
+2. then we need to initialize it. This needs to be initialized after session
+3. this gives us access to flash() method through which we can set anything
+4. and access the same in another request middleware through key
+
+-----------------------------------------------------------------------------------------------------------------------
+
+Useful resources:
+
+Bcrypt Official Docs: https://github.com/dcodeIO/bcrypt.js
+
+More on CSRF Attacks: https://www.acunetix.com/websitesecurity/csrf-attacks/
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+Sending Emails:
+
+Sending Email is highly complex and require a 'Mail Server' to handle all requests
+Hence majorly all companies including udemy using third party 'Mail Server' like aws encrypting
+and we also will use third party pkg to send mails
+There are many mail servers available like: 
+SES, AWS, MailTrim, SendGrid
+
+we will be using SendGrid as it is free till we send 100 mails in a day: https://sendgrid.com/
+
+Signup in SendGrid by creating an account
+Post signing up, verify single sender verification process
+make sure everywhere email addresses mentioned are the valid ones
+
+Now need to install this pkg in nodejs application
+npm install --save nodemailer nodemailer-sendgrid-transport
+
+nodemailer is used to for accessing email functionality in nodejs and 
+nodemailer-sendgrid-transport is used to interact with nodejs with SendGrid
+
+After signing up in SendGrid, go to Settings on the left panel -> API Keys -> and create an API key
+This will create an API key, copy that key and use it in api_key field in auth object inside sendGridTransport
+
+const nodemailer = require('nodemailer');
+const sendgridTransport = require('nodemailer-sendgrid-transport');
+
+const transporter = nodemailer.createTransport(sendgridTransport({
+  auth: {
+    api_key: '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'
+  }
+}))
+
+transporter.sendMail({
+          to: email,
+          from: 'agrawal.hina13@gmail.com',
+          subject: 'Signup Succeeded!',
+          html: '<h1>You successfully signed up!</h1>'
+        })   
+      })
+
+
+Useful resources:
+
+Nodemailer Official Docs: https://nodemailer.com/about/
+
+SendGrid Official Docs: https://sendgrid.com/docs/
+
+-----------------------------------------------------------------------------------------------------------------
+
+Advance Authentication:
+
+Here we want to achieve Reset Password functionality
+For Reset Password, we will give user a screen wherein user can enter email address, and when user click on REset Password
+willl send an link to the email provided and that link should be valid for some time only so will set an expiry date/time
+
+For this, we will create a unique token with some expiry date and store it in database so when user clicks on the link in the email,
+we would verify that that link is being sent by us only
+
+'crypto' is an inbuilt library provided by nodejs that helps to create a secure unique random value
+
+-------------------------------------------------------------------------------------------------------------------
+
+Authorization:
+
+Authorization means getting access to only those data which it has authorized to.
+
+Currently in our admin page, any user can edit or delete the product
+But we want only that user to edit or delete it, who has created it
+
+and for this, in admin products, we only show those products which are created by that user
+
+and to implement this, when we fetch the products on admin page from db, we pass the filter to fetch only those products
+for which userId is the logged in user id. and Logged in user we are saving in req.user in app js field
+
+so this way, we can achieve Authorization
+
+-------------------------------------------------------------------------------------------------------------------
+
+Validations
+
+Server sode validations are the most important and crucial as validations can be done at client side
+but that is only for good user experience and does not solve the main purpose as end user can edit it from console or disable
+javascript. Hence server side validations are key
+
+With Express for validations, we have express validator pkg
+
+https://github.com/express-validator/express-validator/tree/56518106696e0c4a87a458c097ebca02be534f5c
+
+https://express-validator.github.io/docs/
+
+https://github.com/validatorjs/validator.js :  To see all built-in validators
+
+npm install --save express-validator
+
+Now lets add basic form validations for signUp page
+that email should be of email type
+Password should be 5 characters long
+and password and confirm password should match
+
+Useful resources:
+
+Express-Validator Docs: https://express-validator.github.io/docs/
+
+Validator.js (which is used behind the scenes) Docs: https://github.com/chriso/validator.js
+
+------------------------------------------------------------------------------------------------------------
+
+Error Handling:
+
+Synchronous code are handled using try catch block and asynchronous code can be handled using then and catch
+
+we have 'throw new Error' provided by nodejs that we can use to throw the error but it throws exception 
+and stops the further execution
+
+to avoid, we can catch the thrown error and handle it so code execution will continue as is
+
+we can check this in error-playground.ejs file
+
+In routes file, where we are using express-validator middleware, there for custom validation we are throwing error using 
+'throw new Error' which throws the error so it is being internally catched by express-validator and so it gives us all the errors 
+array including thrown error in validationResult
+
+In case of catch() method, wherein we are just logging the error which anyways is crashing the page and execution,
+we can make a generic error 500 page which is a server error code and render that page instead of exception
+
+Expressjs Error handling middleware
+when we give next(new Error()) then expressjs skips all other middleware and goes to the error handling middleware
+This is a special middleware which takes 4 argumnets: error, req, res, next which indicates that this is a error handling middlware
+
+If we have more than one error handling middleware, then they will execute from top to bottom just like the normal middleware
+
+----------------------------------------------
+
+Error Handling in sync and async calls execution:
+
+To reach to the expressjs error middleware, we call the next method with the new error to go to the error handling middleware. 
+This is in case we have async calls like in then and catch, promises, callbacks. 
+There we necessarily need to call 'next(new Error())' to reach to the middleware
+
+However, if it is Synchronous call, then can directly call 'throw new Error('Some dummy error')' to reach to the expressjs 
+error handling middleware
+
+---------------------------------
+
+Error Handling in Express.js - Official Docs: https://expressjs.com/en/guide/error-handling.html
+
+-------------------------------------------------------------------------------------------------------------------------
+
+File Upload and download
+
+ - We will learn how to upload and download files from the server
+ - in Add product, instead of ImageUrl, we now will use file upload
+
+ When we use File, we see that image field is always blank in postAddProduct req body
+ This is because, to read every request, we use 'bodyParser.urlencoded' to fetch req data
+ this works only for text field and can read and parse and understand only the text data
+ But when we upload image, it is in bytes form and hence to parse it so that we can get it in req object, 
+ we need third party package called 'multer'
+
+ Multer parses incoming requests for Files. It can be used to parse text data as well. It parses both. 
+
+It works on the basis of encType value provided in form.
+By default, if we dont give any, form takes 'application/x-www-form-urlencoded' encType value 
+which means this file has only text type of data and hence bodyParser can parse it
+
+Multer looks for encType value 'multipart/form-data' which indicates it has multiple type of data
+and hence multer can parse text and file both type of data
+
+Install:
+npm install --save multer
+
+to create pdf on nodejs server, we can use : PDFKit:  https://pdfkit.org/
+
+To install: 
+npm install --save pdfkit
+
+Useful resources:
+
+Multer Official Docs: https://github.com/expressjs/multer
+
+Streaming Files: https://medium.freecodecamp.org/node-js-streams-everything-you-need-to-know-c9141306be93
+
+Generating PDFs with PDFKit: http://pdfkit.org/docs/getting_started.html
+
+-----------------------------------------------------------------------------------------------------------------
+
+Pagination:
+
+Mongoose gives us 'skip' and 'limit' method to skip some items and limit some items while fetching from database
+that we can use to show limited set of data on a page while pagination
+
+Skip & Limit with SQL
+When using MongoDB, you can use skip() and limit() as shown in the last lecture.
+
+But how would that work in SQL?
+
+Here's how you would implement pagination in SQL code: 
+https://stackoverflow.com/questions/3799193/mysql-data-best-way-to-implement-paging
+
+To quickly sum it up: The LIMIT command allows you to restrict the amount of data points you fetch, 
+it's your limit() equivalent. Combined with the OFFSET command (which replaces skip()), 
+you can control how many items you want to fetch and how many you want to skip.
+
+When using Sequelize, the official docs describe how to add pagination: 
+https://sequelize.org/master/manual/model-querying-basics.html
+
+Mongoose gives us 'count' method to get the total items count.
+These all count, skip, limit operations are faster that retrieving data.
+These all operations are called on cursor provided by find method. 
+These all filtering and all logic is not done at server side rather than at database side.
+
+--------------------------------------------------------------------------------------------------------
+
+Understanding Async requests
+
+Till now, we have seen requests that we submit as 'post' method usually in form and return html page in response
+either through redirect or render
+REturning complete html page re-renders the page if on the same page
+
+There might be scenarios wherein we just want to send some json data to the server may through some url
+and send back some josn data only in response and not the complete html. These are called async requests
+
+For ex: When we delete the product on admin products page, we send the request via form post method, delete the product
+and ends back the entire same products same in response so basically we are re-rendering the page on every delete
+
+This we can change using async javascript request 
+
+public folder is served statically in app.js file so all folders inside that public folder that is css and js folder will be 
+served in the browser and hence will be considered at the client side
+so we can add one javascript file inside js folder to write client side javascript code that will be rendered in the browser
+
+images are served statically statically and public folder is served statically that is css and js in public folder
+so all these will be avaiable in browser (can see in sources tab) and hence will be considered at client side
+
+when button type is submit, it automatically submits the form and send a post request to the server so
+Now, for delete functionality, we do not want to submit the form so we will remove type submit from button 
+and form section also since there is no post method now
+
+----------------------------
+
+The JSON Data Format
+What is JSON?
+
+JSON stands for JavaScript Object Notation and a typically JSON data structure looks like this:
+
+{
+    "name": "Your Name",
+    "age": 29,
+    "courses": [
+        "angular-the-complete-guide",
+        "react-the-complete-guide"
+    ],
+    "profile": {
+        "joined": "2017-05-21",
+        "courses": 2
+    },
+    "averageRating": 4.8,
+    "active": true
+}
+It looks a lot like a normal JavaScript object, but one important difference is that all key names are enclosed by double quotation marks (").
+
+Besides that, you can store text (string), numeric (integers and floats) and boolean data as well as nested objects and arrays.
+
+You can dive deeper on this page: https://www.json.org/
+
+--------------------
+
+the csrf token pkg that we are using looks for the csrf value not only in the body 
+(that we are using in all our views, setting in the req body, for the body, it looks for '_csrf' key)
+but also in the header (that we are doing now for delete request, setting in header in fetch method, 
+for the header it looks for 'csrf-token' key) 
+or even in the query paramters
+
+Please note that while deleting like this, the page was not reloaded instead the existing page was updated
+
+Useful resources:
+
+More on the fetch API: https://developers.google.com/web/updates/2015/03/introduction-to-fetch
+
+More on AJAX Requests: https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX/Getting_Started
+
+----------------------------------------------------------------------------------------------------------------------
+
+Adding Payments:
+
+For this, we will use 'Stripe payments'
+to use stripe at clinet side, we will include js file: https://js.stripe.com/v3/
+and to use the same at server side, we will install stripe: npm install --save stripe
+
+Payment is successful:
+usecard: 4242 4242 4242 4242
+exp date: any future date
+cvv: anything lets say 123
+address: should be outside India 
+Give Germany and enter Test Test in all fields
+payment will be successful
+
+------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
