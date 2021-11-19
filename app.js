@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+//const https = require('https');
 
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -30,6 +31,9 @@ const store = new MongoDBStore({
   collection: 'sessions'
 });
 const csrfProtection = csrf();
+
+// const privateKey = fs.readFileSync('server.key');
+// const certificate = fs.readFileSync('server.cert');
 
 app.set('view engine', 'ejs');
 app.set('views', 'views');
@@ -162,7 +166,8 @@ mongoose
     //     user.save();
     //   }
     // });
-    app.listen(process.env.PORT || 3000);
+      app.listen(process.env.PORT || 3000);
+    //https.createServer({key: privateKey, cert: certificate},app).listen(process.env.PORT || 3000);
   })
   .catch(err => {
     console.log(err);
