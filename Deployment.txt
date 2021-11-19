@@ -1,0 +1,259 @@
+
+1. We should avoid using hard coded values for like port, password, api keys and use Environment Variables instead.
+2. Use production API keys in case using any third party packages that exposes the same like Stripe API Keys
+-------------------------------------------------------------------------------------------------------------------------------
+
+Environment Variables:
+Environment Variables is a concept supported by Nodejs wherein we can pass certain configurations, certain variables from outside the nodejs application so we dont hard code it in our application and the values will be injected to the node application when the server starts
+This allows us to conveniently change the values in production without having to re-deploy our code
+
+Examples of this would be
+1. Port number: we can use anything we want in development above 1000 but in production, it is been set by the hosting providers so we can not hardcode it in our application
+2. Another is when we connect to mongodb cluster, we provide username, password and database name in our string which obviously should be configurable
+one it can keep on changing and another these are sensitive information and should not be exposed
+3. Another is stripe API key. This is also sensitive information and should not be hard coded in application
+
+Implementation:
+We can access Environment Variables on the 'process' object. This is available globally in the node app. It is part of the core node runtime.
+On the process object, we have 'env' object which has access to all the environment variables that are present by default and also what we set
+For Port, almost all hosting providers set port as 'PORT' in env variable on it's own and we dont need to do anything for that 
+
+Now to set this env variables, we can create 'nodemon.json' file at the root level and define all these variables in 'env' object. This is only to check in development. BUt since in production, we wont be using nodemon, so we need to have different solution
+First thing is for production we need to change the script and instead of starting nodemon server on 'start' script, we will provide node and for nodemon, will define another script
+
+Now to set env variables for node since it will now not use the nodemon.json file,  one can set it in the dashboard of hosting provider OR
+we can pass all the env variables in package.json file in front of 'start' script separated by space
+
+"start": "SET MONGO_USER=MongoDbUser & SET MONGO_PASSWORD=MongoDbUser & SET MONGO_DEFAULT_DATABASE=shopAuthentication & SET STRIPE_KEY=sk_test_51JdFHSSBOM29I0C8WHskmAGuGFPd80SJaMsEGXRyS5m4oWsZcGchnknYFjGWUtA1CrFRcnyZTe8vLVleQ8tY6Qes000DF5hvLh && node app.js",
+
+Now, there is special env variable already provided that is NODE_ENV which is set by the hosting provider or we can also set it the same way we are setting other variables
+
+When node/express application receives NODE_ENV as production then it does many things on its own related to production like reducing the error logging and optimizing etc hence should be used only in production
+
+----------------------------------------------------------------------------------------------------------------------------------------
+
+Production API Keys:
+If you have production API keys like for Stripe then replace test API key with Production API key
+
+---------------------------------------------------------------------------------------------------------------------------------------
+
+Secure Node Express Applications: Secure applications from attacks
+
+Node Express allpications can be secured to some extend by setting secure headers and for that we use third party pkg: Helmet
+https://helmetjs.github.io/
+
+Helmet helps you secure your Express apps by setting various HTTP headers.It set certain headers to the responses we sent back.
+It follows best practices to avoid various types of attacks
+
+Implementation
+install helmet: npm install helmet --save
+and then we just need to include it as a middleware 
+app.use(helmet());
+and it will run on all incoming requests and therefore also adjusting the response and then it will set its headers
+
+and now when we run the application, we can see in the network tab for the localhost that various protection headers like xss and many others have been added
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
+Compressing Assets
+
+For this also, we can use another pkg which is expressjs compression which adds compressions to application
+https://github.com/expressjs/compression
+
+Implementation
+npm install --save compression
+
+and then add this as middleware
+app.use(compression());
+
+and now when we run the application, we can notice the size of css and js file before and after the compression.
+Pls note it does not compress the images as it makes it more difficult to load
+Also, almost all hosting providers adds compression of their own, in that case, we shouldnt be using it. If hosting providers does not provide compression or if we are building our own server then we can use this compression pkg
+
+--------------------------------------------------------------------------------------------------------------------------------------
+Setting up Request Logging
+
+Morgan is a pkg that makes Logging request data really simple
+
+Implementation
+npm install --save morgan
+and then adding as middleware
+app.use(morgan('combined'));
+it has various config paramters like combined that we can check in the official doc
+
+Adding this, when we run the application and hit server, we can see various logging information in the console like which request what browser and all
+to log that to a file and not in console, we can 
+
+//write data in access.log file and flags a means append the data to it and not overrite
+const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), {flags: 'a'});
+
+app.use(morgan('combined', {stream: accessLogsStream}));
+
+Besides using morgan to log requests in general, you can also add your own log messages in your code.
+
+For one, you can of course use the good old console.log() command to write logs.
+
+For a more advanced/ detailed approach on logging (with higher control), see this article: https://blog.risingstack.com/node-js-logging-tutorial/
+
+--------------------------------------------------------------------------------------------------------------------------------------
+Setting up SSL Server
+
+TLS is simply the newer version of SSL. SSL is the common name
+
+SSL/TLS is both about securing the data that is being sent from client to the server
+
+To secure the data, we need to encrypt the data when sent to server and decrypt at the server end. For this we use SSL/TLS encryption.
+The mechanism that is being used for that is: we will have public key and private key. 
+Public key will be used for encrypting and will be shared with the client
+Private key will be known to the server only securely that the server will use for decrypting 
+Now for the public key, before sending it to the client, we bind that public key to a server identity like domain, admin data and will use that to create a certificate known as 'SSL Certificate'
+To generate this certificate, we use '480' for that. However we can create our own SSL certificate also but browser would not trust that and give a warning to the user that this page uses SSL but doesnt seem to be secure, do you really want to visit it so better to use certificate provided by known certificate authority that browser trust and we will have to get one from the certificate authority when we actually deploy to production
+
+Here in this course, we will create our own certificate as the way both works is the same
+
+Implementation:
+we will use openssl. for that wil have to install it first. Need Binaries SSL for that 
+https://wiki.openssl.org/index.php/Binaries
+https://slproweb.com/products/Win32OpenSSL.html
+
+Now to generate public and private key, run this is powershell like how we install anything
+openssl req -nodes -new -x509 -keyout server.key -out server.cert
+"C:\Program Files\OpenSSL-Win64\bin\openssl.exe" req -nodes -new -x509 -keyout server.key -out server.cert
+
+(this is not working currently and not generating keys)
+
+and when you enter, it will ask for details, enter details (here in development anything would work but actually should be correct values)
+One important paramter it asks for is 'Common name'. This has to be domain name else it wont work. so in our case, it will be 'localhost'
+but if we host this on lets say example.com then this common name has to be 'example.com'
+
+This wil generate 2 new files in the folder:
+server.key which is the private key and server.cert which is the certificate.
+server.key will stay at the server and server.cert will send to the client
+
+Till now, by default we were using http, now we will use https
+const https = require('https');
+
+and we will read these two files synchronously since we do not want to allow till we have read this
+const privateKey = fs.readFileSync('server.key');
+const certificate = fs.readFileSync('server.cert');
+
+Now when we create and listen to the server, we will create https server where we will set these keys so instead of 
+app.listen(process.env.PORT || 3000);
+
+create https server:
+https.createServer({key: privateKey, cert: certificate},app).listen(process.env.PORT || 3000);
+
+and now when we start server and run application, we now run on https which is now secure. Although it shows warning as it is not authorized SSL certificate. This way we can create our own 
+but this will be done by hosting provider and hence we do not need to do this
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+Deployment:
+
+We will deploy using Heroku
+
+create account on heroku and create new app
+Leave pipeline option as of now and see deployment method
+There we have Heroku Git: For this Downoad and install the Heroku CLI, for this we need to download Git also
+
+https://dashboard.heroku.com/apps/shopping-website-hina/deploy/heroku-git
+https://devcenter.heroku.com/articles/heroku-cli
+
+Now in your terminal powershell, where your app is.. type 
+'heroku login'
+It will login you to heroku cli
+
+Now connect your git remote to heroku using : heroku git:remote -a shopping-website-hina
+
+Now add the node version in engines that will be used by heroku server to run the application
+see node version using 'node -v' and add that version in pkg.json file
+
+"engines":{
+    "node": "14.17.1"
+  }
+
+Apart from this, make sure to use compression as heroku does not provide that
+Heroku does provide SSL so make sure to remove that from code if done and run on normal http server
+Also add one 'Procfile' without any extension, this is a heroku file and give command 'web: node app.js' so that it would know to run app.js file when the application starts
+
+Apart from this, make sure you have 'gitignore file' to ignore node modules as it will be automatically installed by heroku on the server
+
+now commit all this changes and push to heroku using 
+$ git add .
+$ git commit -am "deployment changes"
+$ git push heroku master
+
+when you do git push heroku master, it will push all git code to heroku and generate its build and it will give a url like this
+https://shopping-website-hina.herokuapp.com/
+
+
+We can check the same on heroku dashboard also under shopping-website-hina -  overview -  it will show build succeeded and give 'open app' option on the right side - https://dashboard.heroku.com/apps/shopping-website-hina
+
+when we open app, it shows application error, we can check logs using 'heroku logs' in powershell and it will show connection to db failed
+and this is because we have not set the environment variables yet
+
+For this, on heroku dashboard
+open app which here is shopping-website-hina -> go to its settings -> and there 'Reveal Config Vars' and add all environment variables as a key value pair
+
+now after this, remember in our mongodb compass, we had to whitelist IPs that is what all ips are allowed to access
+now, heroku does not provide a static ip rather it has a dynamic range. Now we can read the heroku documentation and see steps to get a static ip or in mongodb, as of now can do, allow from anywhere
+
+And now, when we have all those changes, we need to restart our server using heroku dashboard - under app name that we have created - on the right side where we have Open app, there more button and REstart all dynos (A dyno is a virtual server that heroku provides)
+
+and now when we hit 'https://shopping-website-hina.herokuapp.com/', we can see our website hosted, up and running
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+Storing User-generated Files on Heroku
+Here's one important note about hosting our app on Heroku!
+
+The user-generated/ uploaded images, are saved and served as intended. But like all hosting providers that offer virtual servers, your file storage is not persistent!
+
+Your source code is saved and re-deployed when you shut down the server (or when it goes to sleep, as it does automatically after some time in the Heroku free tier).
+
+But your generated and uploaded files are not stored and re-created. They would be lost after a server restart!
+
+Therefore, it's recommended that you use a different storage place when using such a hosting provider.
+
+In cases where you run your own server, which you fully own/ manage, that does of course not apply.
+
+What would be alternatives?
+
+A popular and very efficient + affordable alternative is AWS S3 (Simple Storage Service): https://aws.amazon.com/s3/
+
+You can easily configure multer to store your files there with the help of another package: https://www.npmjs.com/package/multer-s3
+
+To also serve your files, you can use packages like s3-proxy: https://www.npmjs.com/package/s3-proxy
+
+For deleting the files (or interacting with them on your own in general), you'd use the AWS SDK: https://aws.amazon.com/sdk-for-node-js/
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+Deploying APIs
+
+the application where we have REST API or graphql, deployment will remain excatly the same. and in the frontend, where we give url to this rest api or graphql, there it will be hosted url instead of localhost
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+Useful resources:
+
+Herokus Docs: https://devcenter.heroku.com/categories/reference
+
+Deploying SPAs (like our React App): https://medium.com/@baphemot/understanding-react-deployment-5a717d4378fd
+
+Alternative Hosting Providers:
+
+Amazon Web Services: https://aws.amazon.com/getting-started/projects/deploy-nodejs-web-app/
+
+DigitalOcean: https://www.digitalocean.com/community/tutorials/how-to-set-up-a-node-js-application-for-production-on-ubuntu-16-04
+
+And of course everything Google yields on "nodejs hosting"
+
+------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
